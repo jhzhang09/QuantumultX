@@ -1,39 +1,41 @@
 const __conf = String.raw`
 
-
 [Remote]
 // custom remote...
-https://raw.githubusercontent.com/yichahucha/surge/master/sub_script.conf
+https://raw.githubusercontent.com/yichahucha/surge/master/qx_sub.txt
 
 
 [Local]
 // custom local...
+# jd
+# ^https?://api\.m\.jd\.com/client\.action\?functionId=(wareBusiness|serverConfig) url script-response-body https://raw.githubusercontent.com/yichahucha/surge/master/jd_price.js
 
 
 [Hostname]
 // custom hostname...
-// www.baidu.com, www.google.com
+# api.m.jd.com
 
 
 `
 
-// 是否开启 GitHub 更新
 const __isUpdateGithub = true
-// GitHub Token（如果使用账号密码 Token 请设置为空 ""）
+// GitHub Token（如果使用账号密码 token 请设置为空 ""）
 const __token = ""
 // GitHub 账号
 const __username = "xxx"
 // GitHub 密码
 const __password = "xxx"
 // GitHub 用户名
-const __owner = "yichahucha"
+const __owner = "xxx"
 // GitHub 仓库名
-const __repo = "surge"
+const __repo = "xxx"
 // GitHub 分支（不指定就使用默认分支）
 const __branch = "master"
+// 指定 eval_script.js 文件路径（路径为空 "" 使用脚本原始路径）
+const __evalPath = "eval_script.js"
 // GitHub 文件路径（没有文件新创建，已有文件覆盖更新，路径为空 "" 不更新）
-const __quanxPath = "eval_sub/quanx.txt"
-const __surgePath = "eval_sub/surge.txt"
+const __quanxPath = "eval_script/qx_script.txt"
+const __surgePath = "eval_script/sg_script.sgmodule"
 // GitHub 更新日志
 const __quanxCommit = "update"
 const __surgeCommit = "update"
@@ -42,55 +44,26 @@ const __emojiDone = ""
 const __emojiFail = "🙃"
 const __emojiSuccess = "😀"
 const __emojiTasks = "🕐"
-const __emojiUpdateSuccess = "- "
-const __emojiUpdateFail = "- "
-const __emojiGitHub = "- "
+const __emojiUpdateSuccess = "🟢"
+const __emojiUpdateFail = "🟠 "
+const __emojiGitHub = "🔵"
 const __showLine = 15
 
 const __log = false
 const __debug = false
 const __developmentMode = false
-const __concurrencyLimit = 5
+const __concurrencyLimit = 15
+const __cacheKey = "ScriptCacheKey"
 
 const __tool = new ____Tool()
 const __base64 = new ____Base64()
 
 if (__tool.isTask) {
-    const ____getConf = (() => {
-        return new Promise((resolve) => {
-            const remoteConf = ____removeAnnotation(____extractConf(__conf, "Remote"))
-            const localConf = ____removeAnnotation(____extractConf(__conf, "Local"))
-            const hostnameConf = ____parseHostname(____removeAnnotation(____extractConf(__conf, "Hostname")))
-            if (remoteConf.length > 0) {
-                console.log("Start updating conf...")
-                if (__debug) __tool.notify("", "", `Start updating ${remoteConf.length} confs...`)
-                ____concurrentQueueLimit(remoteConf, __concurrencyLimit, (url) => {
-                    return ____downloadFile(url)
-                })
-                    .then(results => {
-                        console.log("Stop updating conf.")
-                        let contents = []
-                        let hostnames = []
-                        results.forEach(data => {
-                            const parseRemoteResult = ____parseRemoteConf(data.body)
-                            if (data.body) {
-                                contents = contents.concat(parseRemoteResult.contents)
-                                hostnames = hostnames.concat(parseRemoteResult.hostnames)
-                            }
-                        });
-                        contents = localConf.concat(contents)
-                        hostnames = hostnameConf.concat(hostnames)
-                        resolve({ contents, hostnames, results })
-                    })
-            } else {
-                resolve({ contents: localConf, hostnames: hostnameConf, results: [] })
-            }
-        })
-    })
     const begin = new Date()
     const storeObj = {}
+    //get conf info (local remote)
     ____getConf()
-        //check
+        //check conf
         .then((conf) => {
             return new Promise((resolve, reject) => {
                 if (conf.contents.length > 0) {
@@ -107,7 +80,7 @@ if (__tool.isTask) {
                 }
             })
         })
-        //parse
+        //parse conf
         .then((contents) => {
             return new Promise((resolve, reject) => {
                 const parseResult = ____parseConf(contents)
@@ -124,7 +97,7 @@ if (__tool.isTask) {
                 }
             })
         })
-        //download
+        //download script
         .then((confMap) => {
             const scriptUrls = Object.keys(confMap)
             __tool.notify("", "", `Start updating ${scriptUrls.length} scripts...`)
@@ -146,18 +119,19 @@ if (__tool.isTask) {
                 })
             })
         })
-        //write map
+        //write cache
         .then((scriptResults) => {
             console.log("Stop updating script.")
             storeObj["scriptResults"] = scriptResults
-            return __tool.write(JSON.stringify(storeObj.confMap), "ScriptConfObjKey")
+            return __tool.write(JSON.stringify(storeObj.confMap), __cacheKey)
         })
         //update github
         .then(() => {
             if (__isUpdateGithub) {
-                const hostname = `${storeObj.confHostnames.length > 0 ? `hostname=${Array.from(new Set(storeObj.confHostnames)).join(",")}` : ""}`
-                const quanxUpdateContent = `${hostname}\n\n${Array.from(new Set(storeObj.quanxConfContents)).join("\n\n")}`
-                const surgeUpdateContent = `${hostname}\n\n${Array.from(new Set(storeObj.surgeConfContents)).join("\n\n")}`
+                const quanxHostname = `${storeObj.confHostnames.length > 0 ? `hostname = ${Array.from(new Set(storeObj.confHostnames)).join(",")}` : ""}`
+                const surgeHostname = `${storeObj.confHostnames.length > 0 ? `hostname = %INSERT% ${Array.from(new Set(storeObj.confHostnames)).join(",")}` : ""}`
+                const quanxUpdateContent = `${quanxHostname}\n\n${Array.from(new Set(storeObj.quanxConfContents)).join("\n\n")}`
+                const surgeUpdateContent = `#!name=eval_script.js module\n\n[MITM]\n${surgeHostname}\n\n[Script]\n${Array.from(new Set(storeObj.surgeConfContents)).join("\n\n")}`
                 const args = [{ path: __quanxPath, content: quanxUpdateContent, commit: __quanxCommit }, { path: __surgePath, content: surgeUpdateContent, commit: __surgeCommit }]
                 console.log("Start updating github...")
                 const update = async () => {
@@ -226,7 +200,7 @@ if (!__tool.isTask) {
         if (__developmentMode) {
             return ____parseDevelopmentModeConf(__conf)
         } else {
-            return JSON.parse(__tool.read("ScriptConfObjKey"))
+            return JSON.parse(__tool.read(__cacheKey))
         }
     })()
     const __script = (() => {
@@ -238,26 +212,8 @@ if (!__tool.isTask) {
             const value = __confObj[key]
             for (let j = 0, len = value.length; j < len; j++) {
                 const match = value[j]
-                const regular = new RegExp(match.regular)
-                if (__debug) {
-                    try {
-                        if (regular.test(__url)) {
-                            const type = match.type
-                            if (type && type.length > 0) {
-                                if (__tool.scriptType == type) {
-                                    script = { url: key, match, content: __developmentMode ? key : __tool.read(key) }
-                                    break
-                                }
-                            } else {
-                                script = { url: key, match, content: __developmentMode ? key : __tool.read(key) }
-                                break
-                            }
-                        }
-                    } catch (error) {
-                        if (__debug) __tool.notify("[eval_script.js]", "", `Error regular : ${match.regular}\nRequest: ${__url}`)
-                        throw error
-                    }
-                } else {
+                try {
+                    const regular = new RegExp(match.regular)
                     if (regular.test(__url)) {
                         const type = match.type
                         if (type && type.length > 0) {
@@ -270,6 +226,9 @@ if (!__tool.isTask) {
                             break
                         }
                     }
+                } catch (error) {
+                    if (__debug) __tool.notify("[eval_script.js]", "", `Error regular : ${match.regular}\nRequest: ${__url}`)
+                    //throw error
                 }
             }
         }
@@ -366,7 +325,7 @@ async function ____updateGitHub(path, content, message) {
                     if (__log) console.log(`updateContent: ${response.status}\n${body}`)
                     body = JSON.parse(body)
                     if (response.status == 200) {
-                        resolve({ url: body.content.download_url, message: `${__emojiGitHub}GitHub updated successfully` })
+                        resolve({ url: body.content.download_url, message: `${__emojiGitHub}GitHub updated successfully${sha != body.content.sha ? " (file changes)" : ""}` })
                     } else if (response.status == 201) {
                         resolve({ url: body.content.download_url, message: `${__emojiGitHub}GitHub file created successfully` })
                     } else {
@@ -381,6 +340,38 @@ async function ____updateGitHub(path, content, message) {
     const sha = await getContent()
     const result = await updateContent(sha)
     return result
+}
+
+function ____getConf() {
+    return new Promise((resolve) => {
+        const remoteConf = ____removeAnnotation(____extractConf(__conf, "Remote"))
+        const localConf = ____removeAnnotation(____extractConf(__conf, "Local"))
+        const hostnameConf = ____parseHostname(____removeAnnotation(____extractConf(__conf, "Hostname")))
+        if (remoteConf.length > 0) {
+            console.log("Start updating conf...")
+            if (__debug) __tool.notify("", "", `Start updating ${remoteConf.length} confs...`)
+            ____concurrentQueueLimit(remoteConf, __concurrencyLimit, (url) => {
+                return ____downloadFile(url)
+            })
+                .then(results => {
+                    console.log("Stop updating conf.")
+                    let contents = []
+                    let hostnames = []
+                    results.forEach(data => {
+                        const parseRemoteResult = ____parseRemoteConf(data.body)
+                        if (data.body) {
+                            contents = contents.concat(parseRemoteResult.contents)
+                            hostnames = hostnames.concat(parseRemoteResult.hostnames)
+                        }
+                    });
+                    contents = localConf.concat(contents)
+                    hostnames = hostnameConf.concat(hostnames)
+                    resolve({ contents, hostnames, results })
+                })
+        } else {
+            resolve({ contents: localConf, hostnames: hostnameConf, results: [] })
+        }
+    })
 }
 
 function ____parseDevelopmentModeConf(conf) {
@@ -418,7 +409,7 @@ function ____concurrentQueueLimit(list, limit, asyncHandle) {
 function ____downloadFile(url) {
     return new Promise((resolve) => {
         __tool.get(url, (error, response, body) => {
-            const filename = url.match(/.*\/(.*?)$/)[1]
+            const filename = url.match(/[^\/]+$/)[0]
             if (!error) {
                 const code = response.statusCode
                 if (code == 200) {
@@ -462,6 +453,7 @@ function ____parseRemoteConf(conf) {
     for (let i = 0, len = lines.length; i < len; i++) {
         const eval = /^(.+)\s+eval\s+(.+)$/
         const surge = /^http\s*-\s*(request|response)\s+(\S+)\s+(.+)$/
+        const newSurge = /^\S+.js\s+=\s(.+)$/
         const quanx = /^(\S+)\s+url\s+script\s*-\s*(\S+)\s*-\s*(?:header|body)\s+(\S+)$/
         let line = lines[i].trim()
         if (line.length > 0) {
@@ -469,7 +461,7 @@ function ____parseRemoteConf(conf) {
                 line = line.replace(/^#*/, "")
                 newLines.push(line)
             } else if (/^(?!;|#|\/\/).*/.test(line)) {
-                if (eval.test(line) || surge.test(line)) {
+                if (eval.test(line) || surge.test(line) || newSurge.test(line)) {
                     newLines.push(line)
                 }
                 if (quanx.test(line)) {
@@ -496,16 +488,28 @@ function ____parseConf(lines) {
         if (line.length > 0 && line.substring(0, 2) != "//" && line.substring(0, 1) != "#") {
             const eval = /^(.+)\s+eval\s+(.+)$/
             const surge = /^http\s*-\s*(request|response)\s+(\S+)\s+(.+)$/
+            const newSurge = /^\S+.js\s+=\s(.+)$/
             const quanx = /^(\S+)\s+url\s+script\s*-\s*(\S+)\s+(\S+\.js)$/
             if (surge.test(line)) {
                 const result = line.match(surge)
                 // content
                 const requiresBody = ____surgeArg(result[3].trim()).requiresBody
-                surgeConfContents.push(`${line.replace(____surgeArg(result[3].trim()).scriptPath, "eval_script.js")}`)
-                quanxConfContents.push(`${result[2].trim()} url script-${result[1].trim()}-${requiresBody == "1" ? "body" : "header"} eval_script.js`)
+                // surgeConfContents.splice(i, 0, `${line.replace(____surgeArg(result[3].trim()).scriptPath, "eval_script.js")}`);
+                if (__evalPath.length > 0) {
+                    const path = __evalPath
+                    const fileName = path.match(/[^\/]+$/)[0]
+                    surgeConfContents.push(`${fileName} = type=http-${result[1].trim()},${requiresBody ? `requires-body=${requiresBody},` : ""}pattern=${result[2].trim()},script-path=${path}`)
+                    quanxConfContents.push(`${result[2].trim()} url script-${result[1].trim()}-${requiresBody == "1" ? "body" : "header"} ${path}`)
+                } else {
+                    const path = ____surgeArg(result[3].trim()).scriptPath
+                    const fileName = path.match(/[^\/]+$/)[0]
+                    surgeConfContents.push(`${fileName} = type=http-${result[1].trim()},${requiresBody ? `requires-body=${requiresBody},` : ""}pattern=${result[2].trim()},script-path=${path}`)
+                    quanxConfContents.push(`${result[2].trim()} url script-${result[1].trim()}-${requiresBody == "1" ? "body" : "header"} ${path}`)
+                }
                 // eval
                 line = `${result[1].trim()} ${result[2].trim()} eval ${____surgeArg(result[3].trim()).scriptPath}`
-            } else if (quanx.test(line)) {
+            }
+            else if (quanx.test(line)) {
                 const result = line.match(quanx)
                 const type = result[2].split("-")
                 // content
@@ -517,11 +521,38 @@ function ____parseConf(lines) {
                         requires = 1
                     }
                 }
-                surgeConfContents.push(`http-${type[0].trim()} ${result[1].trim()} ${requires == 0 ? "" : `requires-body=${requires},`}script-path=eval_script.js`)
-                quanxConfContents.push(`${line.replace(result[3].trim(), "eval_script.js")}`)
+                // surgeConfContents.splice(i, 0, `http-${type[0].trim()} ${result[1].trim()} ${requires == 0 ? "" : `requires-body=${requires},`}script-path=eval_script.js`)
+                if (__evalPath.length > 0) {
+                    const path = __evalPath
+                    const fileName = path.match(/[^\/]+$/)[0]
+                    surgeConfContents.push(`${fileName} = type=http-${type[0].trim()},${requires == 0 ? "" : `requires-body=${requires},`}pattern=${result[1].trim()},script-path=${path}`)
+                    quanxConfContents.push(`${line.replace(result[3].trim(), path)}`)
+                } else {
+                    const path = result[3].trim()
+                    const fileName = path.match(/[^\/]+$/)[0]
+                    surgeConfContents.push(`${fileName} = type=http-${type[0].trim()},${requires == 0 ? "" : `requires-body=${requires},`}pattern=${result[1].trim()},script-path=${path}`)
+                    quanxConfContents.push(line)
+                }
                 // eval
                 line = `${type[0].trim()} ${result[1].trim()} eval ${result[3].trim()}`
-
+            }
+            else if (newSurge.test(line)) {
+                //content
+                const result = line.match(newSurge)
+                const surgeArg = ____surgeArg(result[1].trim())
+                // surgeConfContents.splice(i, 0, `${surgeArg.type} ${surgeArg.pattern} ${surgeArg.requiresBody ? `requires-body=${surgeArg.requiresBody},` : ""}script-path=eval_script.js`)
+                if (__evalPath.length > 0) {
+                    const path = __evalPath
+                    const fileName = path.match(/[^\/]+$/)[0]
+                    surgeConfContents.push(`${fileName} = ${result[1].replace(surgeArg.scriptPath, path)}`)
+                    quanxConfContents.push(`${surgeArg.pattern} url script-${surgeArg.type.replace("http-", "")}-${(surgeArg.requiresBody && surgeArg.requiresBody == "1") ? "body" : "header"} ${path}`)
+                } else {
+                    const path = surgeArg.scriptPath
+                    surgeConfContents.push(line)
+                    quanxConfContents.push(`${surgeArg.pattern} url script-${surgeArg.type.replace("http-", "")}-${(surgeArg.requiresBody && surgeArg.requiresBody == "1") ? "body" : "header"} ${path}`)
+                }
+                // eval
+                line = `${surgeArg.type.replace("http-", "")} ${surgeArg.pattern} eval ${surgeArg.scriptPath}`
             }
             if (eval.test(line)) {
                 const value = line.match(eval)
@@ -572,11 +603,19 @@ function ____surgeArg(arg) {
         const item = args[i].trim()
         const path = /^script-path\s*=\s*(\S+)$/
         const requires = /^requires-body\s*=\s*(\S+)$/
+        const pattern = /^pattern\s*=\s*(\S+)$/
+        const type = /^type\s*=\s*(\S+)$/
         if (path.test(item)) {
             surgeArg["scriptPath"] = item.match(path)[1]
         }
         if (requires.test(item)) {
             surgeArg["requiresBody"] = item.match(requires)[1]
+        }
+        if (pattern.test(item)) {
+            surgeArg["pattern"] = item.match(pattern)[1]
+        }
+        if (type.test(item)) {
+            surgeArg["type"] = item.match(type)[1]
         }
     }
     return surgeArg

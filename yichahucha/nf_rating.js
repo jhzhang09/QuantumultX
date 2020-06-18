@@ -22,7 +22,7 @@ if (!$tool.isResponse) {
         }
         url = url.replace(/&languages=(.*?)&/, "&languages=en-US&");
     }
-    // url += "&path=" + encodeURIComponent(`[${videos[0]},"details"]`);
+    url += "&path=" + encodeURIComponent(`[${videos[0]},"details"]`);
     $done({ url });
 } else {
     var IMDbApikeys = IMDbApikeys();
@@ -30,6 +30,7 @@ if (!$tool.isResponse) {
     if (!IMDbApikey) updateIMDbApikey();
     let obj = JSON.parse($response.body);
     if (consoleLog) console.log("Netflix Original Body:\n" + $response.body);
+    if (typeof(obj.paths[0][1]) == "string") {
     const videoID = obj.paths[0][1];
     const video = obj.value.videos[videoID];
     const map = getTitleMap();
@@ -43,10 +44,10 @@ if (!$tool.isResponse) {
     if (type == "show") {
         type = "series";
     }
-    // if (type == "movie") {
-    //     year = video.details.releaseYear;
-    // }
-    // delete video.details;
+    if (type == "movie") {
+        year = video.details.releaseYear;
+    }
+    delete video.details;
     const requestRatings = async () => {
         const IMDb = await requestIMDbRating(title, year, type);
         const Douban = await requestDoubanRating(IMDb.id);
@@ -67,6 +68,9 @@ if (!$tool.isResponse) {
             if (consoleLog) console.log("Netflix Modified Body:\n" + JSON.stringify(obj));
             $done({ body: JSON.stringify(obj) });
         });
+    } else {
+        $done({});
+    }
 }
 
 function getTitleMap() {
