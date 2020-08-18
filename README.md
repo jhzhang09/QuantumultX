@@ -1,3 +1,5 @@
+![Anurag’s github stats](https://github-readme-stats.vercel.app/api?username=nzw9314&show_icons=true&theme=merko)
+
 ### 说明 :
 
 * 只是搬运和同步更新大佬脚本.
@@ -80,3 +82,28 @@
 * [@Neurogram-R](https://github.com/Neurogram-R)
 
 * [@sazs34](https://github.com/sazs34)
+
+* [@uniqueque](https://github.com/uniqueque)
+
+* [@eHpo](https://github.com/eHpo1/Rules)
+
+* [@Sunert](https://github.com/Sunert/Scripts)
+
+* [@songyangzz](https://github.com/songyangzz/QuantumultX.git)
+
+* [@zZPiglet](https://github.com/zZPiglet/Task.git)
+
+* [@Peng-YM](https://github.com/Peng-YM/QuanX)
+
+* [@evilbutcher](https://github.com/evilbutcher/Quantumult_X/tree/master)
+
+* [@lxk0301](https://gitee.com/lxk0301/scripts)
+
+* [@toulanboy](https://github.com/toulanboy/scripts)
+
+* [@lowking](https://github.com/lowking/Scripts)
+
+
+## License
+
+[GPLv3](LICENSE)
